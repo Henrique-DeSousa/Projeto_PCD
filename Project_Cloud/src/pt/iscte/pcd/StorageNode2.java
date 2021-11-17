@@ -2,16 +2,13 @@ package pt.iscte.pcd;
 
 import java.io.*;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Scanner;
 
 
-public class StorageNode extends Thread {
+public class StorageNode2 extends Thread {
 
     private static int serverPort = 8080;
     private static int clientPort = 8081;
@@ -28,14 +25,14 @@ public class StorageNode extends Thread {
 
 
     public static void main(String[] args) throws IOException {
-       /* List<Workers> w = new ArrayList<>();
+      /*  List<Workers> w = new ArrayList<>();
 
         for(int i = 0; i < 3; i++){
 
             Workers we = new Workers(adrname,serverPort);
             w.add(we);
         }*/
-        new StorageNode(adrname, 8080, clientPort, "null").run();
+        new StorageNode2(adrname, 8080, clientPort+1, fileName).run();
     }
 
     @Override
@@ -52,7 +49,7 @@ public class StorageNode extends Thread {
     }
 
 
-    public StorageNode(String nameAddress, int serverPort, int clientPort, String fileName) throws IOException {
+    public StorageNode2(String nameAddress, int serverPort, int clientPort, String fileName) throws IOException {
         this.adrname = nameAddress;
         this.serverPort = serverPort;
         this.clientPort = clientPort;
@@ -84,7 +81,19 @@ public class StorageNode extends Thread {
         }
     }
 
+    private void startingUp() throws IOException {
 
+
+        System.out.println("Address you are connecting to: " + address);
+        System.out.println("Socket connected is: " + this.socket);
+
+        clientIn = socket.getInputStream();
+        directoryIn = socket.getOutputStream();
+        String s = "INSC " + address + " " + clientPort + "\n";
+        directoryIn.write(s.getBytes()); //inscricao no directory
+        directoryIn.flush();
+
+    }
 
     private void checkFileAvailability(File file) throws FileNotFoundException {
         if (file.exists()){
@@ -96,9 +105,37 @@ public class StorageNode extends Thread {
         }
     }
 
+    private void sendData(File fileIn) throws FileNotFoundException {
+        Scanner s = new Scanner(new BufferedReader(new FileReader(fileIn)));
+        byte[] bytes = s.nextLine().getBytes();
 
+        for (int i = 0; i < bytes.length - 1; i++) {
+            cloudByteList.add(new CloudByte(bytes[i]));
+        }
+        try {
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            BufferedInputStream buff = new BufferedInputStream((new FileInputStream(fileIn)));
+            out.writeObject(cloudByteList);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println(cloudByteList);
+    }
 
-
+    private void receiveData(File fileIns) throws FileNotFoundException {
+        FileOutputStream fis = new FileOutputStream(fileIns);
+            try {
+                ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+                CloudByte cb = (CloudByte) in.readObject();
+                cloudByteList = (List<CloudByte>) cb;
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            System.out.println(cloudByteList);
+    }
 
     public void addExistingNodes(String sta) throws IOException {
         if (sta.equals("end")) return;
