@@ -22,7 +22,7 @@ public class StorageNode extends Thread {
     private static String adrname = "localhost";
 
 
-    private List<Nodes> nodes = new ArrayList<Nodes>();
+
 
 
 
@@ -36,11 +36,19 @@ public class StorageNode extends Thread {
         }*/
 
         ConnectingDirectory cd = new ConnectingDirectory(adrname, clientPort, serverPort);
+        ErrorInjection ei = new ErrorInjection(fileName ,adrname, adrname, clientPort, serverPort);
         cd.signUp();
-        FileInfo fi = new FileInfo(new File(fileName),adrname);
-        Download down = new Download(new File(fileName), adrname);
-        Upload up = new Upload(new File(fileName), adrname);
-        up.uploladFile(new File(fileName));
+        cd.askConnectedNodes();
+        FileInfo fi = new FileInfo(fileName,adrname, adrname, clientPort, serverPort);
+        Download down = new Download(fileName, adrname, adrname, clientPort, serverPort);
+        Upload up = new Upload( fileName , adrname, adrname, clientPort, serverPort);
+        ei.injection();
+        up.uploadFile(new File(fileName));
+
+
+
+
+
         //new StorageNode(adrname, 8080, clientPort, "null").run();
     }
 
@@ -67,27 +75,7 @@ public class StorageNode extends Thread {
     }
 
 
-    /*private void checkAvailableConnections() throws IOException {
 
-        Scanner scan = new Scanner(clientIn);
-        System.out.println("Checking for available nodes:");
-        String a = "nodes\n";
-        this.directoryIn.write(a.getBytes());
-        directoryIn.flush();
-        String directoryNodesAvailable;
-
-        while (true) {
-            directoryNodesAvailable = scan.nextLine();
-            addExistingNodes(directoryNodesAvailable);
-            //System.out.println("Eco: " + directoryNodesAvailable);
-            if (directoryNodesAvailable.equals("end")) {
-                directoryIn.flush();
-                System.out.println("test");
-                getNode();
-                break;
-            }
-        }
-    }*/
 
 
 /*
@@ -105,23 +93,7 @@ public class StorageNode extends Thread {
 
 
 
-    public void addExistingNodes(String sta) throws IOException {
-        if (sta.equals("end")) return;
-        String str = sta;
-        String[] temp = str.split("/");
 
-        String test = temp[1];
-        String[] testy = test.split(" ");
-        int clientPort = Integer.parseInt(testy[1]);
-
-        test = temp[0];
-        testy = test.split(" ");
-        nodes.add(new Nodes(testy[1],clientPort));
-    }
-
-    public void getNode(){
-        nodes.forEach((z) -> System.out.println(z.getNode()));
-    }
 
 
 }

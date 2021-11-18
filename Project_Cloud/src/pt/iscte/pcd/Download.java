@@ -9,25 +9,22 @@ public class Download extends FileInfo{
     /* this.address = InetAddress.getByName(null);
         this.socket = new Socket(address, serverPort);*/
 
-    private List<CloudByte> cloudByteList = new ArrayList<>();
-    private String fileName;
-    private File file;
-    private ConnectingDirectory cs;
+
+   // private String fileName;
+   // private File file;
 
 
-    public Download(File file, String name) throws IOException {
-        super(file, name);
-        this.file = file;
-        this.fileName = name;
+    public Download(String file, String name, String hostName, int host, int directory) throws IOException {
+        super(file, name, hostName, host , directory);
     }
 
     public void downloadFile() throws IOException {
-        if(super.doesFileExist(file)){
-            System.out.println("File: " + file + " exists.");
+        if(super.doesFileExist(getFile())){
+            System.out.println("File: " + getFile() + " exists.");
             System.exit(0);
         }
-        FileOutputStream fos = new FileOutputStream(file);
-        ObjectInputStream ois = new ObjectInputStream(cs.getSocket().getInputStream());
+        FileOutputStream fos = new FileOutputStream(getFile());
+        ObjectInputStream ois = new ObjectInputStream(getSocket().getInputStream());
     }
 
     /*

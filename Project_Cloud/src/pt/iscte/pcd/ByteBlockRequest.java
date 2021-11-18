@@ -1,4 +1,4 @@
 package pt.iscte.pcd;
 
-public class ByteBlockRequest {
+public class ByteBlockRequest extends Thread {
 }
