@@ -26,7 +26,7 @@ public class Upload extends FileInfo{
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println(getCloudByteList());
+        //System.out.println(getCloudByteList());
     }
            // System.out.println(cloudByteList.size());
 

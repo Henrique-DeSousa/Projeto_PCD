@@ -9,36 +9,36 @@ import java.util.Scanner;
 public class ErrorInjection extends FileInfo{
 
     private String error;
-    private List<CloudByte> cloudy = new ArrayList<>();
 
     public ErrorInjection(String file, String name, String hostName, int host, int directory) throws IOException {
         super(file,name, hostName, host , directory);
-        this.cloudy = getCloudByteList();
+
         // is there one? we don't know
 
     }
 
-    public void injection(){
-        System.out.println(cloudy.size());
+    public void injection() {
+        System.out.println(getCloudByteList().size());
         Scanner scan = new Scanner(System.in);
-        while(true){
+        while (true) {
             error = scan.nextLine();
-            if(error.contains("Error")){
-                String[] split = error.split(" ");
-                Integer index = Integer.parseInt(split[1]);
-                    if(index < 0){
+            if ((error.contains("Error") || error.contains("error") || error.contains("erro") || error.contains("Erro"))) {
+                String clean = error.replaceAll("\\D+", "");
+                    int index = Integer.parseInt(clean);
+                    //Integer index = Integer.parseInt(split[1]);
+                    if (index < 0) {
                         System.err.println("Please insert a value higher or equal to 0");
                         break;
-                    }else if( index > cloudy.size()-1){
-                        System.err.println("Please inster a value lower or equal to: " + (cloudy.size()));
+                    } else if (index > getCloudByteList().size() - 1) {
+                        System.err.println("Please insert a value lower or equal to: " + (getCloudByteList().size()));
                         break;
-                    }else{
+                    } else {
                         System.out.println("Injecting error on byte: " + index);
-                        cloudy.get(index).makeByteCorrupt();
-                        System.out.println(cloudy);
+                        getCloudByteList().get(index).makeByteCorrupt();
+                        System.out.println(getCloudByteList());
                         break;
                     }
+                }
             }
         }
-    }
 }
