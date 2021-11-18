@@ -19,12 +19,11 @@ public class StorageNode extends Thread {
     private static String fileName = "data.bin";
     private Socket socket;
     private static File file; //data.bin
-
-    static private OutputStream directoryIn;
-    static private  InputStream clientIn;
     private static String adrname = "localhost";
-    private List<CloudByte> cloudByteList = new ArrayList<>();
+
+
     private List<Nodes> nodes = new ArrayList<Nodes>();
+
 
 
     public static void main(String[] args) throws IOException {
@@ -35,21 +34,27 @@ public class StorageNode extends Thread {
             Workers we = new Workers(adrname,serverPort);
             w.add(we);
         }*/
-        new StorageNode(adrname, 8080, clientPort, "null").run();
+
+        ConnectingDirectory cd = new ConnectingDirectory(adrname, clientPort, serverPort);
+        cd.signUp();
+        FileInfo fi = new FileInfo(new File(fileName),adrname);
+        Download down = new Download(new File(fileName), adrname);
+        Upload up = new Upload(new File(fileName), adrname);
+        up.uploladFile(new File(fileName));
+        //new StorageNode(adrname, 8080, clientPort, "null").run();
     }
 
-    @Override
+   /* @Override
     public void run() {
         try {
-            startingUp();
-            checkAvailableConnections();
+           checkAvailableConnections();
             checkFileAvailability(file);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
             System.out.println("finally");
         }
-    }
+    }*/
 
 
     public StorageNode(String nameAddress, int serverPort, int clientPort, String fileName) throws IOException {
@@ -62,7 +67,7 @@ public class StorageNode extends Thread {
     }
 
 
-    private void checkAvailableConnections() throws IOException {
+    /*private void checkAvailableConnections() throws IOException {
 
         Scanner scan = new Scanner(clientIn);
         System.out.println("Checking for available nodes:");
@@ -82,10 +87,10 @@ public class StorageNode extends Thread {
                 break;
             }
         }
-    }
+    }*/
 
 
-
+/*
     private void checkFileAvailability(File file) throws FileNotFoundException {
         if (file.exists()){
             System.out.println("The file: " + file + " already exists!");
@@ -95,7 +100,7 @@ public class StorageNode extends Thread {
             receiveData(new File(fileName));
         }
     }
-
+*/
 
 
 
