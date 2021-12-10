@@ -1,49 +1,71 @@
 package pt.iscte.pcd;
 
-import java.io.*;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.io.IOException;
 import java.util.Scanner;
-
+import java.util.regex.Pattern;
 
 public class StorageNode extends Thread {
 
     private static int serverPort = 8080;
-    private static int clientPort = 8081;
-    private static String fileName = "data.bin";
-    private static String adrname = "localhost";
-    private InetAddress address;
+    private static int clientPort = 8082;
+    private static String fileName = null;
+    private static String addressName = "localhost";
 
-    public static void main(String[] args) throws IOException {
-       /* List<Workers> w = new ArrayList<>();
 
-        for(int i = 0; i < 3; i++){
+    private static ConnectingDirectory connectingDirectory;
+    private static FileData fileData;
+    //private static FileData.Download download = new FileData.Download();
+    static ErrorInjection errorInjection;
 
-            Workers we = new Workers(adrname,serverPort);
-            w.add(we);
+    public static void main(String[] args) throws IOException, InterruptedException {
+
+       /* if (args.length > 3) {
+            addressName = args[0];
+            serverPort = Integer.parseInt(args[1]);
+            clientPort = Integer.parseInt(args[2]);
+            fileData = new FileData(args[3]);
+        } else {
+            fileName = null;
+            fileData = new FileData(fileName);
         }*/
-        ConnectingDirectory cd = new ConnectingDirectory(adrname, clientPort, serverPort);
-        ErrorInjection ei = new ErrorInjection(fileName ,adrname, adrname, clientPort, serverPort);
-        cd.signUp();
-        cd.askConnectedNodes();
-        FileInfo fi = new FileInfo(fileName,adrname, adrname, clientPort, serverPort);
-        Download down = new Download(fileName, adrname, adrname, clientPort, serverPort);
-        Upload up = new Upload( fileName , adrname, adrname, clientPort, serverPort);
-        ei.injection();
-        up.uploadFile(new File(fileName));
+        fileData = new FileData(fileName);
+        new FileData.Download();
+        new FileData.Upload();
+        errorInjection = new ErrorInjection();
+        connectingDirectory = new ConnectingDirectory(addressName, clientPort, serverPort);
+        errorInjection.start();
+        connectingDirectory.signUp();
+        connectingDirectory.askConnectedNodes();
+
     }
 
-    public StorageNode(String nameAddress, int serverPort, int clientPort, String fileName) throws IOException {
-        //this.adrname = nameAddress;
-       // this.serverPort = serverPort;
-        //this.clientPort = clientPort;
-        //this.file = new File(fileName);
-        //this.address = InetAddress.getByName(null);
-        //this.socket = new Socket(address, serverPort);
+    public static class ErrorInjection extends Thread {
+
+        @Override
+        public void run() {
+            injection();
+        }
+
+        private String error;
+
+        public void injection() {
+            System.out.println(fileData.getCloudByteList().size());
+            Scanner scan = new Scanner(System.in);
+            while (true) {
+                error = scan.nextLine();
+                if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
+                    int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
+                    System.out.println(index);
+                    if (index > fileData.getCloudByteList().size() - 1) {
+                        System.err.println("Please insert a value lower or equal to: " + (FileData.getCloudByteList().size() - 1));
+                        break;
+                    } else {
+                        fileData.getCloudByteList().get(index).makeByteCorrupt();
+                        System.out.println(FileData.getCloudByteList());
+                        System.out.println("Injecting error on byte: " + index);
+                    }
+                }
+            }
+        }
     }
 }

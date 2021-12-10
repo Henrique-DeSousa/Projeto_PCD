@@ -1,8 +1,6 @@
 package pt.iscte.pcd;
 
 import java.io.Serializable;
-
-import javax.management.RuntimeErrorException;
 /** @brief Class to represent 7-bit bytes. Extra bit is for parity, and is set in constructor.
  *
  * @author luismota
