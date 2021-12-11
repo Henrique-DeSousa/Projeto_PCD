@@ -32,14 +32,11 @@ public class StorageNode extends Thread {
             fileName = null;
             fileData = new FileData(fileName);
         }*/
-        new StorageNode("localhost", 8081, 8080);
+        new StorageNode("localhost", 8082, 8080);
         fileData = new FileData(fileName);
         errorInjection = new ErrorInjection();
         errorInjection.start();
-        if (fileData.getFile().exists()) {
-        } else {
-            new Upload().temp();
-        }
+        new Upload().temp();
     }
 
     public StorageNode(String addressName, int clientPort, int serverPort) throws IOException {

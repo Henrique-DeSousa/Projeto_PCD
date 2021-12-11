@@ -2,17 +2,20 @@ package pt.iscte.pcd;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import static pt.iscte.pcd.FileData.getFile;
+
+import static pt.iscte.pcd.FileData.*;
 
 public class FileData {
 
     private static File file;
     private static String fileName;
-    private static List<CloudByte> cloudByteList = Collections.synchronizedList(new ArrayList<>());
+    private static List<CloudByte> cloudByteList = new ArrayList<>();
     private static CloudByte[] storedData;
     private Download download = new Download();
 
@@ -30,14 +33,14 @@ public class FileData {
 
     public void fillingList() throws IOException {
         byte[] fileContents = Files.readAllBytes(file.toPath());
-         storedData = new CloudByte[fileContents.length];
-        for (int i = 0; i!= fileContents.length - 1; i++) {
+        storedData = new CloudByte[fileContents.length];
+        for (int i = 0; i != fileContents.length - 1; i++) {
             storedData[i] = new CloudByte(fileContents[i]);
             cloudByteList.add(new CloudByte(fileContents[i]));
         }
     }
 
-    public static synchronized CloudByte[] getStoredData(){
+    public static synchronized CloudByte[] getStoredData() {
         return storedData;
     }
 
@@ -102,6 +105,8 @@ class Download extends Thread {
             System.out.println("Downloading: " + (1000000 - size));
             oos.write(buffer, 0, bytes);
             size -= bytes;
+            putByte(buffer);
+            System.out.println(getStoredData());
         }
         System.out.println("Download Completed");
         ois.close();
@@ -116,12 +121,15 @@ class Download extends Thread {
 class Upload {
 
     public static void temp() throws IOException {
-        var nodes = ConnectingDirectory.getNodes();
-        for (int i = 0; i < nodes.size() - 1; i++) {
-            if (!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP())) {
-                uploadFile(nodes.get(i).getHostPort());
+        if (getFile().exists()) {
+            var nodes = ConnectingDirectory.getNodes();
+            for (int i = 0; i < nodes.size() - 1; i++) {
+                if (!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP())) {
+                    uploadFile(nodes.get(i).getHostPort());
+                }
             }
         }
+        new Download().start();
     }
 
     public static void uploadFile(int hostPort) throws IOException {
@@ -129,8 +137,10 @@ class Upload {
         int bytes = 0;
         Socket socket = new Socket("localhost", hostPort);
 
-        ObjectInputStream ois = new ObjectInputStream((InputStream) FileData.getCloudByteList());
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(getStoredData().toString().getBytes(StandardCharsets.UTF_8));
+        ObjectInputStream ois = new ObjectInputStream((inputStream));
         ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+        System.out.println(oos);
 
         //FileInputStream fileInputStream = new FileInputStream("data.bin");
         //DataInputStream dis = new DataInputStream(fileInputStream);
