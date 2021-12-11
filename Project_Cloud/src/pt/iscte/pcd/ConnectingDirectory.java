@@ -13,12 +13,12 @@ import java.util.Scanner;
 public class ConnectingDirectory {
 
     private String hostName;
-    private int hostIP;
+    private static int hostIP;
     private int directoryIP;
     private InetAddress address;
     private InputStream in;
     private OutputStream out;
-    private List<Nodes> nodes = new ArrayList<>();
+    private static List<Nodes> nodes = new ArrayList<>();
     List<String> nodess = new ArrayList<>();
     private Socket socket;
     private String sign = "INSC ";
@@ -30,10 +30,11 @@ public class ConnectingDirectory {
         this.directoryIP = directoryIP;
         this.address = InetAddress.getByName(hostName);
         this.socket = new Socket(address, directoryIP);
+        signUp();
+        askConnectedNodes();
     }
 
     public void signUp() throws IOException {
-
         System.out.println("You are connecting to the following address: " + hostIP + "\n");
         System.out.println("The port you are connected to: " + socket.getPort() + "\n");
         in = socket.getInputStream();
@@ -60,7 +61,7 @@ public class ConnectingDirectory {
             //System.out.println("Eco: " + directoryNodesAvailable);
             if (directoryNodesAvailable.equals("end")) {
                 out.flush();
-                getNodes();
+                printNodes();
                 break;
             }
         }
@@ -75,7 +76,11 @@ public class ConnectingDirectory {
         return;
     }
 
-    public void getNodes() {
+    public static List<Nodes> getNodes() {
+        return nodes;
+    }
+
+    public void printNodes() {
         System.out.println("Checking for available nodes: \n");
         nodes.forEach((z) -> System.out.println(z.getNode()));
     }
@@ -84,7 +89,7 @@ public class ConnectingDirectory {
         return socket;
     }
 
-    public int getHostIP() {
+    public static int getHostIP() {
         return hostIP;
     }
 

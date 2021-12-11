@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+import static pt.iscte.pcd.FileData.*;
+
 public class StorageNode extends Thread {
 
     private static int serverPort = 8080;
@@ -14,7 +16,6 @@ public class StorageNode extends Thread {
 
     private static ConnectingDirectory connectingDirectory;
     private static FileData fileData;
-    //private static FileData.Download download = new FileData.Download();
     static ErrorInjection errorInjection;
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -28,14 +29,19 @@ public class StorageNode extends Thread {
             fileName = null;
             fileData = new FileData(fileName);
         }*/
-        fileData = new FileData(fileName);
-        new FileData.Download();
-        new FileData.Upload();
-        errorInjection = new ErrorInjection();
         connectingDirectory = new ConnectingDirectory(addressName, clientPort, serverPort);
+        fileData = new FileData(fileName);
+        errorInjection = new ErrorInjection();
         errorInjection.start();
-        connectingDirectory.signUp();
-        connectingDirectory.askConnectedNodes();
+        if(fileData.getFile().exists()){
+            new Upload().uploadFile();
+        }else {
+            new Download().downloadFile();
+        }
+
+
+
+
 
     }
 
@@ -49,7 +55,7 @@ public class StorageNode extends Thread {
         private String error;
 
         public void injection() {
-            System.out.println(fileData.getCloudByteList().size());
+            System.out.println(getCloudByteList().size());
             Scanner scan = new Scanner(System.in);
             while (true) {
                 error = scan.nextLine();
@@ -57,11 +63,11 @@ public class StorageNode extends Thread {
                     int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
                     System.out.println(index);
                     if (index > fileData.getCloudByteList().size() - 1) {
-                        System.err.println("Please insert a value lower or equal to: " + (FileData.getCloudByteList().size() - 1));
+                        System.err.println("Please insert a value lower or equal to: " + (getCloudByteList().size() - 1));
                         break;
                     } else {
                         fileData.getCloudByteList().get(index).makeByteCorrupt();
-                        System.out.println(FileData.getCloudByteList());
+                        System.out.println(getCloudByteList());
                         System.out.println("Injecting error on byte: " + index);
                     }
                 }
