@@ -1,15 +1,11 @@
 package pt.iscte.pcd;
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static pt.iscte.pcd.FileData.getCloudByteList;
 import static pt.iscte.pcd.FileData.getFile;
 
 public class FileData {
@@ -17,12 +13,14 @@ public class FileData {
     private static File file;
     private static String fileName;
     private static List<CloudByte> cloudByteList = Collections.synchronizedList(new ArrayList<>());
+    private static CloudByte[] storedData;
+    private Download download = new Download();
 
     public FileData(String fileName) throws IOException {
         if (fileName == null) {
-            this.fileName = "data2.bin";
+            this.fileName = "data1.bin";
             this.file = new File(this.fileName);
-            Download.downloadFile();
+            download.start();
         } else {
             this.file = new File(fileName);
             this.fileName = fileName;
@@ -32,20 +30,33 @@ public class FileData {
 
     public void fillingList() throws IOException {
         byte[] fileContents = Files.readAllBytes(file.toPath());
-        for (int i = 0; i < fileContents.length - 1; i++) {
+         storedData = new CloudByte[fileContents.length];
+        for (int i = 0; i!= fileContents.length - 1; i++) {
+            storedData[i] = new CloudByte(fileContents[i]);
             cloudByteList.add(new CloudByte(fileContents[i]));
         }
     }
 
-    public static List<CloudByte> getCloudByteList() {
+    public static synchronized CloudByte[] getStoredData(){
+        return storedData;
+    }
+
+    public static synchronized List<CloudByte> getCloudByteList() {
         return cloudByteList;
+    }
+
+    public static synchronized void putByte(byte[] bytes) {
+        storedData = new CloudByte[bytes.length];
+        for (int i = 0; i != bytes.length - 1; i++) {
+            storedData[i] = new CloudByte(bytes[i]);
+        }
     }
 
     public static File getFile() {
         return file;
     }
 
-    public String getFileName() {
+    public static String getFileName() {
         return fileName;
     }
 
@@ -58,88 +69,87 @@ public class FileData {
 }
 
 class Download extends Thread {
-    static ConnectingDirectory connectingDirectory;
-
     @Override
     public void run() {
         try {
-            downloadFile();
+            var nodes = ConnectingDirectory.getNodes();
+            for (int i = 0; i < nodes.size() - 1; i++) {
+                if (!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP())) {
+                    downloadFile();
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void downloadFile() throws IOException {
-
-        var nodes = ConnectingDirectory.getNodes();
-
+    public void downloadFile() throws IOException {
         Socket socket = null;
 
         if (getFile().exists()) {
             System.out.println("File: " + getFile() + " exists.");
-            new Upload().uploadFile();
+            Upload.temp();
         }
+        socket = StorageNode.getServerSocket().accept();
 
-        FileOutputStream fos = new FileOutputStream(FileData.getFile());
-        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+        ObjectOutputStream oos = new ObjectOutputStream((OutputStream) FileData.getCloudByteList());
 
-
-        for (int i = 0; i < nodes.size() - 1; i++) {
-            if (!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP())) {
-                System.out.println("test33123");
-
-                ServerSocket serverSocket = new ServerSocket(nodes.get(i).getHostPort());
-                System.out.println(serverSocket);
-                socket = serverSocket.accept();
-                System.out.println("now socket");
-                System.out.println(socket);
-                //socket = new Socket(nodes.get(i).getName(), nodes.get(i).getHostPort());
-                //System.out.println(socket);
-                int bytes = 0;
-                ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-                long size = ois.readLong();
-                System.out.println(size);
-                byte[] buffer = new byte[100 * 10000];
-                while (size > 0 && (bytes = ois.read(buffer, 0, (int) Math.min(buffer.length, size))) != -1) {
-                    System.out.println("test3333");
-                    oos.write(buffer, 0, bytes);
-                    size -= bytes;
-                }
-            }
+        int bytes = 0;
+        long size = ois.readLong();
+        byte[] buffer = new byte[100 * 10000];
+        while (size > 0 && (bytes = ois.read(buffer, 0, (int) Math.min(buffer.length, size))) != -1) {
+            System.out.println("Downloading: " + (1000000 - size));
+            oos.write(buffer, 0, bytes);
+            size -= bytes;
         }
+        System.out.println("Download Completed");
+        ois.close();
+        oos.close();
+        socket.close();
     }
+
 }
 
 /*--------------------------Upload--------------------------*/
 
-class Upload { //extends Thread
-    // private ConnectingDirectory connectingDirectory;
+class Upload {
 
-
-    public void uploadFile() throws IOException {
-        int bytes = 0;
+    public static void temp() throws IOException {
         var nodes = ConnectingDirectory.getNodes();
-        InputStream fileInputStream = new FileInputStream("data.bin");
-        DataInputStream ois = new DataInputStream(fileInputStream);
-
-        if (!getFile().exists()) {
-            System.out.println("File doesn't exist." + "\nDownloading the file!");
-            new Download().downloadFile();
-        }
-        System.out.println("hello");
         for (int i = 0; i < nodes.size() - 1; i++) {
-            System.out.println(!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP()));
-            System.out.println(nodes.get(i).getHostPort());
-            System.out.println(ConnectingDirectory.getHostIP());
-            System.out.println("hello2");
-            Socket socket = new Socket(nodes.get(i).getName(), nodes.get(i).getHostPort());
-            ObjectOutputStream dos = new ObjectOutputStream(socket.getOutputStream());
-            dos.writeLong(new File("data.bin").length());
-            byte[] buffer = new byte[100 * 10000];
-            while ((bytes = ois.read(buffer)) != -1) {
-                dos.write(buffer, 0, bytes);
-                dos.flush();
+            if (!(nodes.get(i).getHostPort() == ConnectingDirectory.getHostIP())) {
+                uploadFile(nodes.get(i).getHostPort());
             }
         }
     }
+
+    public static void uploadFile(int hostPort) throws IOException {
+        Download download = new Download();
+        int bytes = 0;
+        Socket socket = new Socket("localhost", hostPort);
+
+        ObjectInputStream ois = new ObjectInputStream((InputStream) FileData.getCloudByteList());
+        ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+
+        //FileInputStream fileInputStream = new FileInputStream("data.bin");
+        //DataInputStream dis = new DataInputStream(fileInputStream);
+        //DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+
+        if (!getFile().exists()) {
+            System.out.println("File doesn't exist." + "\nDownloading the file!");
+            download.start();
+        }
+        oos.writeLong(new File("data.bin").length());
+        byte[] buffer = new byte[100 * 10000];
+        while ((bytes = ois.read(buffer)) != -1) {
+            System.out.println("Uploading: " + (1000000 - bytes));
+            oos.write(buffer, 0, bytes);
+            oos.flush();
+        }
+        oos.close();
+        ois.close();
+    }
+
 }
+

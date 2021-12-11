@@ -1,6 +1,8 @@
 package pt.iscte.pcd;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -17,6 +19,7 @@ public class StorageNode extends Thread {
     private static ConnectingDirectory connectingDirectory;
     private static FileData fileData;
     static ErrorInjection errorInjection;
+    private ServerSocket serverSocket;
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
@@ -29,47 +32,55 @@ public class StorageNode extends Thread {
             fileName = null;
             fileData = new FileData(fileName);
         }*/
-        connectingDirectory = new ConnectingDirectory(addressName, clientPort, serverPort);
+        new StorageNode("localhost", 8081, 8080);
         fileData = new FileData(fileName);
         errorInjection = new ErrorInjection();
         errorInjection.start();
-        if(fileData.getFile().exists()){
-            new Upload().uploadFile();
-        }else {
-            new Download().downloadFile();
+        if (fileData.getFile().exists()) {
+        } else {
+            new Upload().temp();
         }
-
-
-
-
-
     }
 
-    public static class ErrorInjection extends Thread {
+    public StorageNode(String addressName, int clientPort, int serverPort) throws IOException {
+        this.serverSocket = new ServerSocket(clientPort);
+        new ConnectingDirectory(addressName, clientPort, serverPort);
+    }
 
-        @Override
-        public void run() {
-            injection();
-        }
+    public static ServerSocket getServerSocket() {
+        return serverSocket;
+    }
 
-        private String error;
+}
 
-        public void injection() {
-            System.out.println(getCloudByteList().size());
-            Scanner scan = new Scanner(System.in);
-            while (true) {
-                error = scan.nextLine();
-                if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
-                    int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
-                    System.out.println(index);
-                    if (index > fileData.getCloudByteList().size() - 1) {
-                        System.err.println("Please insert a value lower or equal to: " + (getCloudByteList().size() - 1));
-                        break;
-                    } else {
-                        fileData.getCloudByteList().get(index).makeByteCorrupt();
-                        System.out.println(getCloudByteList());
-                        System.out.println("Injecting error on byte: " + index);
-                    }
+
+class ErrorInjection extends Thread {
+
+    FileData fileData;
+
+    @Override
+    public void run() {
+        injection();
+    }
+
+    private String error;
+
+    public void injection() {
+        System.out.println(getCloudByteList().size());
+        Scanner scan = new Scanner(System.in);
+        while (true) {
+            error = scan.nextLine();
+            if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
+                int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
+                System.out.println(index);
+
+                if (index > fileData.getCloudByteList().size() - 1) {
+                    System.err.println("Please insert a value lower or equal to: " + (getCloudByteList().size() - 1));
+                    break;
+                } else {
+                    fileData.getCloudByteList().get(index).makeByteCorrupt();
+                    System.out.println(getCloudByteList());
+                    System.out.println("Injecting error on byte: " + index);
                 }
             }
         }
