@@ -19,7 +19,7 @@ public class StorageNode extends Thread {
     private static ConnectingDirectory connectingDirectory;
     private static FileData fileData;
     static ErrorInjection errorInjection;
-    private ServerSocket serverSocket;
+    private static ServerSocket serverSocket;
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
