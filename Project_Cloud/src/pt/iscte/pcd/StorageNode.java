@@ -1,6 +1,5 @@
 package pt.iscte.pcd;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Scanner;
@@ -10,37 +9,36 @@ import static pt.iscte.pcd.FileData.*;
 
 public class StorageNode extends Thread {
 
-    private static int serverPort = 8080;
-    private static int clientPort = 8082;
-    private static String fileName = null;
+    private static int serverPort;
+    private static int clientPort;
     private static String addressName = "localhost";
 
-
-    private static ConnectingDirectory connectingDirectory;
     private static FileData fileData;
     static ErrorInjection errorInjection;
     private static ServerSocket serverSocket;
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-
-       /* if (args.length > 3) {
+    public static void main(String[] args) throws IOException{
+        //localhost 8081 8080 data.bin
+        fileData = new FileData(null);
+        if (args.length >= 3) {
             addressName = args[0];
-            serverPort = Integer.parseInt(args[1]);
-            clientPort = Integer.parseInt(args[2]);
-            fileData = new FileData(args[3]);
-        } else {
-            fileName = null;
-            fileData = new FileData(fileName);
-        }*/
-        new StorageNode("localhost", 8082, 8080);
-        fileData = new FileData(fileName);
+            clientPort = Integer.parseInt(args[1]);
+            serverPort = Integer.parseInt(args[2]);
+            if(args.length == 4){
+                fileData = new FileData(args[3]);
+            }
+        }else return;
+
+        new StorageNode(addressName, clientPort, serverPort);
         errorInjection = new ErrorInjection();
         errorInjection.start();
         new Upload().temp();
     }
 
+
+
     public StorageNode(String addressName, int clientPort, int serverPort) throws IOException {
-        this.serverSocket = new ServerSocket(clientPort);
+        serverSocket = new ServerSocket(clientPort);
         new ConnectingDirectory(addressName, clientPort, serverPort);
     }
 
@@ -60,23 +58,22 @@ class ErrorInjection extends Thread {
         injection();
     }
 
-    private String error;
-
     public void injection() {
-        System.out.println(getCloudByteList().size());
+        System.out.println(getBBR().getByteArray().length);
         Scanner scan = new Scanner(System.in);
         while (true) {
-            error = scan.nextLine();
+            String error = scan.nextLine();
             if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
                 int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
                 System.out.println(index);
 
-                if (index > fileData.getCloudByteList().size() - 1) {
-                    System.err.println("Please insert a value lower or equal to: " + (getCloudByteList().size() - 1));
+                if (index > getBBR().getByteArray().length - 1) {
+                    System.err.println("Please insert a value lower or equal to: " + (getBBR().getByteArray().length - 1));
                     break;
                 } else {
-                    fileData.getCloudByteList().get(index).makeByteCorrupt();
-                    System.out.println(getCloudByteList());
+                    CloudByte[] b = getStoredData();
+                    b[index].makeByteCorrupt();
+                    System.out.println(b[index]);
                     System.out.println("Injecting error on byte: " + index);
                 }
             }

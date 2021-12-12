@@ -12,22 +12,19 @@ import java.util.Scanner;
 
 public class ConnectingDirectory {
 
-    private String hostName;
+    private final String hostName;
     private static int hostIP;
-    private int directoryIP;
-    private InetAddress address;
+    private final InetAddress address;
     private InputStream in;
     private OutputStream out;
-    private static List<Nodes> nodes = new ArrayList<>();
-    List<String> nodess = new ArrayList<>();
-    private Socket socket;
-    private String sign = "INSC ";
+    private static final List<Nodes> nodes = new ArrayList<>();
+    List<String> checkNodesList = new ArrayList<>();
+    private final Socket socket;
 
 
     public ConnectingDirectory(String hostName, int hostIP, int directoryIP) throws IOException {
         this.hostName = hostName;
-        this.hostIP = hostIP;
-        this.directoryIP = directoryIP;
+        ConnectingDirectory.hostIP = hostIP;
         this.address = InetAddress.getByName(hostName);
         this.socket = new Socket(address, directoryIP);
         signUp();
@@ -44,8 +41,8 @@ public class ConnectingDirectory {
     }
 
     public String generateSignUp(InetAddress address, int hostIP) {
-        String signUpString = sign + address + " " + hostIP + "\n";
-        return signUpString;
+        String sign = "INSC ";
+        return sign + address + " " + hostIP + "\n";
     }
 
     public void askConnectedNodes() throws IOException {
@@ -67,13 +64,12 @@ public class ConnectingDirectory {
         }
     }
 
-    public void addExistingNodes(String sta) throws IOException {
+    public void addExistingNodes(String sta) {
         if (sta.equals("end")) return;
-        if (!(nodess.contains(sta))) {
-            nodess.add(sta);
-            nodes.add(new Nodes(nodess.get(nodess.size() - 1)));
+        if (!(checkNodesList.contains(sta))) {
+            checkNodesList.add(sta);
+            nodes.add(new Nodes(checkNodesList.get(checkNodesList.size() - 1)));
         }
-        return;
     }
 
     public static List<Nodes> getNodes() {
@@ -85,15 +81,7 @@ public class ConnectingDirectory {
         nodes.forEach((z) -> System.out.println(z.getNode()));
     }
 
-    public Socket getSocket() {
-        return socket;
-    }
-
     public static int getHostIP() {
         return hostIP;
-    }
-
-    public InetAddress getAddress() {
-        return address;
     }
 }
