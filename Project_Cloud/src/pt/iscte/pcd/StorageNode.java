@@ -17,7 +17,7 @@ public class StorageNode extends Thread {
     private static FileData fileData;
     static ErrorInjection errorInjection;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         //localhost 8081 8080 data.bin
         fileData = new FileData(null);
         if (args.length == 4) {
@@ -28,15 +28,18 @@ public class StorageNode extends Thread {
             new StorageNode(addressName, clientPort, serverPort);
             errorInjection = new ErrorInjection();
             errorInjection.start();
-            new Upload().start();
-        }else if(args.length == 3){
+            sleep(10000);
+            ErrorDetection errorDetection = new ErrorDetection(FileData.getStoredData());
+            ErrorDetection2 errorDetection2 = new ErrorDetection2(FileData.getStoredData());
+            errorDetection.start();
+            errorDetection2.start();
+        } else if (args.length == 3) {
             addressName = args[0];
             clientPort = Integer.parseInt(args[1]);
             serverPort = Integer.parseInt(args[2]);
             new StorageNode(addressName, clientPort, serverPort);
             new Download().start();
         }
-
 
 
     }
@@ -46,34 +49,83 @@ public class StorageNode extends Thread {
         new ConnectingDirectory(addressName, clientPort, serverPort);
     }
 
-}
 
+    static class ErrorInjection extends Thread {
 
-class ErrorInjection extends Thread {
+        FileData filedata;
 
-    FileData filedata;
+        @Override
+        public void run() {
+            injection();
+        }
 
-    @Override
-    public void run() {
-        injection();
+        public void injection() {
+            Scanner scan = new Scanner(System.in);
+            while (true) {
+                String error = scan.nextLine();
+                if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
+                    int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
+                    System.out.println(index);
+
+                    if (index > getStoredData().length - 1) {
+                        System.err.println("Please insert a value lower or equal to: " + (getStoredData().length - 1));
+                        break;
+                    } else {
+                        CloudByte[] b = getStoredData();
+                        b[index].makeByteCorrupt();
+                        System.out.println(b[index]);
+                        System.out.println("Injecting error on byte: " + index);
+                    }
+                }
+                new Upload().start();
+                break;
+            }
+        }
     }
 
-    public void injection() {
-        Scanner scan = new Scanner(System.in);
-        while (true) {
-            String error = scan.nextLine();
-            if (Pattern.compile(":\s[0-9]+").matcher(error).find() || Pattern.compile(":\s+-[0-9]+").matcher(error).find()) { // Accepts both positives and negative ints
-                int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
-                System.out.println(index);
+    public static class ErrorDetection extends Thread {
+        private CloudByte[] stored;
 
-                if (index > getStoredData().length - 1) {
-                    System.err.println("Please insert a value lower or equal to: " + (getStoredData().length - 1));
-                    break;
-                } else {
-                    CloudByte[] b = getStoredData();
-                    b[index].makeByteCorrupt();
-                    System.out.println(b[index]);
-                    System.out.println("Injecting error on byte: " + index);
+        public ErrorDetection(CloudByte[] stored) {
+            this.stored = stored;
+        }
+
+        @Override
+        public void run() {
+            System.out.println("Error Dectection Starting... \n");
+            int index = -1;
+            for (CloudByte cloudByte : stored) {
+                index++;
+                if (index < 500000) {
+                    //System.out.println(index);
+                    if (cloudByte.isParityOk() == false) {
+                        //processo de correçao do byte
+                        System.out.println("ERROR DETECTED - INDEX:" + index);
+                    }
+                }
+            }
+        }
+    }
+
+    public static class ErrorDetection2 extends Thread {
+        private CloudByte[] stored;
+
+        public ErrorDetection2(CloudByte[] stored) {
+            this.stored = stored;
+        }
+
+        @Override
+        public void run() {
+            System.out.printf("Error Dectection Starting...  \n");
+            int index = -1;
+            for (CloudByte cloudByte : stored) {
+                index++;
+                if (index >= 500000) {
+                    //System.out.println(index);
+                    if (cloudByte.isParityOk() == false) {
+                        //processo de correçao do byte
+                        System.out.println("ERROR DETECTED - INDEX:" + index);
+                    }
                 }
             }
         }
