@@ -2,6 +2,7 @@ package pt.iscte.pcd;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
@@ -15,35 +16,34 @@ public class StorageNode extends Thread {
 
     private static FileData fileData;
     static ErrorInjection errorInjection;
-    private static ServerSocket serverSocket;
 
-    public static void main(String[] args) throws IOException{
+    public static void main(String[] args) throws IOException {
         //localhost 8081 8080 data.bin
         fileData = new FileData(null);
-        if (args.length >= 3) {
+        if (args.length == 4) {
             addressName = args[0];
             clientPort = Integer.parseInt(args[1]);
             serverPort = Integer.parseInt(args[2]);
-            if(args.length == 4){
-                fileData = new FileData(args[3]);
-            }
-        }else return;
+            fileData = new FileData(args[3]);
+            new StorageNode(addressName, clientPort, serverPort);
+            errorInjection = new ErrorInjection();
+            errorInjection.start();
+            new Upload().start();
+        }else if(args.length == 3){
+            addressName = args[0];
+            clientPort = Integer.parseInt(args[1]);
+            serverPort = Integer.parseInt(args[2]);
+            new StorageNode(addressName, clientPort, serverPort);
+            new Download().start();
+        }
 
-        new StorageNode(addressName, clientPort, serverPort);
-        errorInjection = new ErrorInjection();
-        errorInjection.start();
-        new Upload().temp();
+
+
     }
-
 
 
     public StorageNode(String addressName, int clientPort, int serverPort) throws IOException {
-        serverSocket = new ServerSocket(clientPort);
         new ConnectingDirectory(addressName, clientPort, serverPort);
-    }
-
-    public static ServerSocket getServerSocket() {
-        return serverSocket;
     }
 
 }
@@ -51,7 +51,7 @@ public class StorageNode extends Thread {
 
 class ErrorInjection extends Thread {
 
-    FileData fileData;
+    FileData filedata;
 
     @Override
     public void run() {
@@ -59,7 +59,6 @@ class ErrorInjection extends Thread {
     }
 
     public void injection() {
-        System.out.println(getBBR().getByteArray().length);
         Scanner scan = new Scanner(System.in);
         while (true) {
             String error = scan.nextLine();
@@ -67,8 +66,8 @@ class ErrorInjection extends Thread {
                 int index = Integer.parseInt(error.replaceAll("\\D+", "")); // replaces EVERYTHING that's not a number, -1 becomes 1.
                 System.out.println(index);
 
-                if (index > getBBR().getByteArray().length - 1) {
-                    System.err.println("Please insert a value lower or equal to: " + (getBBR().getByteArray().length - 1));
+                if (index > getStoredData().length - 1) {
+                    System.err.println("Please insert a value lower or equal to: " + (getStoredData().length - 1));
                     break;
                 } else {
                     CloudByte[] b = getStoredData();

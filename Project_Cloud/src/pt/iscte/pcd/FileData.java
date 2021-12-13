@@ -17,9 +17,7 @@ public class FileData {
     public FileData(String fileName) throws IOException {
         if (fileName == null) {
             FileData.fileName = "data1.bin";
-            file = new File(FileData.fileName);
-            Download download = new Download();
-            download.start();
+            file = new File(this.fileName);
         } else {
             file = new File(fileName);
             FileData.fileName = fileName;
@@ -34,10 +32,6 @@ public class FileData {
             storedData[i] = new CloudByte(fileContents[i]);
         }
         BBR = new ByteBlockRequest(storedData);
-    }
-
-    public static ByteBlockRequest getBBR() {
-        return BBR;
     }
 
     public static synchronized CloudByte[] getStoredData() {
@@ -55,14 +49,6 @@ public class FileData {
 
     public static File getFile() {
         return file;
-    }
-
-    public static String getFileName() {
-        return fileName;
-    }
-
-    public static void setFile(File file) {
-        FileData.file = file;
     }
 
     /*--------------------------Download--------------------------*/
@@ -86,14 +72,10 @@ class Download extends Thread {
         }
     }
 
-    public void downloadFile() throws IOException, ClassNotFoundException {
-        Socket socket;
 
-        if (getFile().exists()) {
-            System.out.println("File: " + getFile() + " exists.");
-            new Upload().temp();
-        }
-        socket = StorageNode.getServerSocket().accept();
+    public synchronized void downloadFile() throws IOException, ClassNotFoundException {
+
+        Socket socket = ConnectingDirectory.getServerSocket().accept();
         ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
 
         for (int j = 0; j <= 9999; j += 1) {
@@ -103,19 +85,33 @@ class Download extends Thread {
             }
         }
         System.out.println("Download Completed");
+        fileWriting(getFile().getName(), list);
+    }
+
+    public void fileWriting(String filename, CloudByte[]x) throws IOException{
+        BufferedWriter outputWriter = null;
+        outputWriter = new BufferedWriter(new FileWriter(filename));
+        for (int i = 0; i < x.length; i++) {
+            outputWriter.write(x[i]+"");
+            outputWriter.newLine();
+        }
+        outputWriter.flush();
+        outputWriter.close();
     }
 }
 
 /*--------------------------Upload--------------------------*/
 
-class Upload {
-
-    public void temp() throws IOException {
+class Upload extends Thread {
+    @Override
+    public void run() {
         if (getFile().exists()) {
             var nodes = ConnectingDirectory.getNodes();
             for (Nodes node : nodes) {
-                if (!(node.getHostPort() == ConnectingDirectory.getHostIP())) {
+                try {
                     uploadFile(node.getHostPort());
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         } else {

@@ -5,6 +5,7 @@ public class Nodes {
     private final String node;
     private final int hostPort;
 
+
     public Nodes(String string) {
         String[] temp = string.split("/");
 
@@ -17,7 +18,9 @@ public class Nodes {
         splitTwo = splitOne.split(" ");
         String name = splitTwo[1];
 
+
         this.node = "node " + name + "/" + hostAddress + " " + this.hostPort;
+
     }
 
     public int getHostPort() {
@@ -27,4 +30,5 @@ public class Nodes {
     public String getNode() {
         return node;
     }
+
 }

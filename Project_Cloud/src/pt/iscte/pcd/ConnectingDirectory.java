@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Scanner;
 
 public class ConnectingDirectory {
 
+    private static int directoryIP;
     private final String hostName;
     private static int hostIP;
     private final InetAddress address;
@@ -19,16 +21,19 @@ public class ConnectingDirectory {
     private OutputStream out;
     private static final List<Nodes> nodes = new ArrayList<>();
     List<String> checkNodesList = new ArrayList<>();
-    private final Socket socket;
-
+    private static Socket socket;
+    private static ServerSocket serverSocket;
 
     public ConnectingDirectory(String hostName, int hostIP, int directoryIP) throws IOException {
         this.hostName = hostName;
+        this.directoryIP = directoryIP;
         ConnectingDirectory.hostIP = hostIP;
         this.address = InetAddress.getByName(hostName);
-        this.socket = new Socket(address, directoryIP);
+        socket = new Socket(address, directoryIP);
+        serverSocket = new ServerSocket(hostIP);
         signUp();
         askConnectedNodes();
+
     }
 
     public void signUp() throws IOException {
@@ -54,20 +59,19 @@ public class ConnectingDirectory {
 
         while (true) {
             directoryNodesAvailable = scan.nextLine();
-            addExistingNodes(directoryNodesAvailable);
-            //System.out.println("Eco: " + directoryNodesAvailable);
+            addExistingNodesToNodeList(directoryNodesAvailable);
             if (directoryNodesAvailable.equals("end")) {
-                out.flush();
-                printNodes();
                 break;
             }
         }
+        printNodes();
     }
 
-    public void addExistingNodes(String sta) {
-        if (sta.equals("end")) return;
-        if (!(checkNodesList.contains(sta))) {
-            checkNodesList.add(sta);
+    public void addExistingNodesToNodeList(String string) {
+
+        if (string.equals("end")) return;
+        if (!(checkNodesList.contains(string))) {
+            checkNodesList.add(string);
             nodes.add(new Nodes(checkNodesList.get(checkNodesList.size() - 1)));
         }
     }
@@ -77,11 +81,20 @@ public class ConnectingDirectory {
     }
 
     public void printNodes() {
-        System.out.println("Checking for available nodes: \n");
+        System.out.println("Available nodes: \n");
         nodes.forEach((z) -> System.out.println(z.getNode()));
+    }
+
+    public static Socket getSocket() {
+        return socket;
     }
 
     public static int getHostIP() {
         return hostIP;
     }
+
+    public static ServerSocket getServerSocket() {
+        return serverSocket;
+    }
+
 }
