@@ -9,19 +9,21 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.CountDownLatch;
 
 public class FileData {
 
-    private File file;
-    private String fileName;
     private CloudByte[] storedData;
     private List<Thread> threadsList;
     private ServerSocket serverSocket;
     private Queue<ByteBlockRequest> byteBlockRequests;
     private ConnectingDirectory cd;
+    private List<CloudByte> correctParity;
+    private int clientIP;
 
     public FileData(String fileName, int clientIP, ConnectingDirectory cd) throws IOException {
         this.cd = cd;
+        this.clientIP = clientIP;
         storedData = new CloudByte[1000000];
         threadsList = new LinkedList<>();
         if (fileName.equals("data.bin")) {
@@ -37,38 +39,32 @@ public class FileData {
         for (int i = 0; i != bytes.length; i++) {
             storedData[i] = new CloudByte(bytes[i]);
         }
-        System.out.println(storedData.length);
     }
 
     private void server(int clientIP) {
         try {
             serverSocket = new ServerSocket(clientIP);
-            Thread t = new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        while (true) {
-                            Socket socket = serverSocket.accept();
-                            System.out.println("t");
-                            clientHandler cH = new clientHandler(socket);
-                            cH.start();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+            Thread t = new Thread(() -> {
+                try {
+                    while (true) {
+                        Socket socket = serverSocket.accept();
+                        clientHandler cH = new clientHandler(socket);
+                        cH.start();
                     }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             });
-            System.out.println("2t");
             for (Thread trd : threadsList) {
                 trd.join();
             }
-            //goncalo stuff
             t.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void downloadFileNodesConnected(int clientIP) throws IOException {
+    public void downloadFileNodesConnected(int clientIP){
         PrintWriter out = cd.getOut();
         BufferedReader in = cd.getIn();
 
@@ -98,7 +94,12 @@ public class FileData {
                 trd.start();
             }
         } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    public int getClientIP() {
+        return clientIP;
     }
 
     public CloudByte[] getStoredData() {
@@ -145,9 +146,7 @@ public class FileData {
                         storedData[j] = comeBack[index];
                         index++;
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (ClassNotFoundException e) {
+                } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
             }
@@ -172,9 +171,9 @@ public class FileData {
                 try {
                     ByteBlockRequest byteBlockRequest = (ByteBlockRequest) in.readObject();
                     for (int i = byteBlockRequest.getIndex(); i < byteBlockRequest.getIndex() + byteBlockRequest.getSize(); i++) {
-                        if (storedData[i].isParityOk() == false) {
+                        if (!storedData[i].isParityOk()) {
                             System.out.println("Error detected ->" + storedData[i]);
-                            //correçao de bits
+                            replaceErrorByte(i, getClientIP());
                         }
                         out.writeObject(Arrays.copyOfRange(storedData, byteBlockRequest.getIndex(), byteBlockRequest.getIndex() + byteBlockRequest.getSize()));
                     }
@@ -186,6 +185,94 @@ public class FileData {
                         ex1.printStackTrace();
                     }
                 }
+            }
+        }
+    }
+
+
+    public void replaceErrorByte(int i, int clientIP) {
+        PrintWriter out = cd.getOut();
+        BufferedReader in = cd.getIn();
+
+
+        ByteBlockRequest bbr = new ByteBlockRequest(i, 1);
+        out.println("nodes");
+        CountDownLatch count = new CountDownLatch(2);
+        correctParity = new LinkedList<>();
+        String end = "";
+        try {
+            threadsList.clear();
+            while (!end.equals("end")) {
+                end = in.readLine();
+                String[] split = end.split(" ");
+                if (split[0].equals("node") && (!split[2].contentEquals(String.valueOf(clientIP)))) {
+                    System.out.println("Checking node: " + split[2]);
+                    Replace r = new Replace("localhost", Integer.parseInt(split[2]), bbr, count);
+                    threadsList.add(r);
+
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        for (Thread t : threadsList) {
+            t.start();
+        }
+        try {
+            count.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        int byteCorrect = 0;
+        while (byteCorrect != 1) {
+            for (int k = 0; k < correctParity.size(); k++) {
+                for (int j = 0; j < correctParity.size(); j++) {
+                    if (correctParity.get(k) == correctParity.get(j)) {
+                        byteCorrect = 1;
+                        storedData[i] = correctParity.get(k);
+                        System.out.println("Content found! New value: " + correctParity.get(k));
+                        return;
+                    }
+                    j++;
+                }
+                k++;
+            }
+        }
+    }
+
+
+    public synchronized void addByte(CloudByte c) {
+        correctParity.add(c);
+    }
+
+
+    public class Replace extends Thread {
+
+        private Socket socket;
+        private ObjectOutputStream out;
+        private ObjectInputStream in;
+        private ByteBlockRequest bbr;
+        private CountDownLatch count;
+
+        public Replace(String Address, int clientIP, ByteBlockRequest bbr, CountDownLatch count) throws IOException {
+            this.bbr = bbr;
+            this.count = count;
+            socket = new Socket(InetAddress.getByName(Address), clientIP);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+        }
+
+        @Override
+        public void run() {
+            try {
+                out.writeObject(bbr);
+                CloudByte result = ((CloudByte[]) in.readObject())[0];
+                addByte(result);
+                count.countDown();
+                System.out.println("Node info ->" + socket.getInetAddress().toString() + " " + socket.getPort() + ": " + result.toString());
+
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
             }
         }
     }
